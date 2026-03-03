@@ -1,0 +1,21 @@
+{% if errors %}
+<div class="error-section">
+    <h3>Errors ({{ errors | length }})</h3>
+    <table class="results-table">
+        <thead>
+            <tr>
+                <th>Connection</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in errors %}
+            <tr>
+                <td class="connection-name">{{ e.connection_name }}</td>
+                <td class="error-msg" title="{{ e.error_message }}">{{ e.error_message }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}

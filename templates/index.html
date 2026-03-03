@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>RDS Capacity Heatmap</h1>
+    <p>Scan every MySQL instance in a Teleport cluster for tables approaching the 16 TB RDS storage limit.</p>
+</div>
+
+<div class="card form-card">
+    <form id="scan-form" onsubmit="startScan(event)">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="cluster">Cluster</label>
+                <div class="cluster-row">
+                    <select name="cluster" id="cluster" required>
+                        <option value="">Select cluster...</option>
+                        {% for c in clusters %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" id="login-btn"
+                            hx-post="/api/login"
+                            hx-include="#cluster"
+                            hx-target="#login-status"
+                            hx-swap="innerHTML"
+                            class="btn btn-secondary">
+                        Login
+                    </button>
+                </div>
+                <div id="login-status">
+                    {% if username %}
+                    <div class="login-status login-success">
+                        Logged in as <strong>{{ username }}</strong>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+                Scan Cluster
+            </button>
+            <button type="button" class="btn btn-cancel" id="cancel-btn"
+                    onclick="cancelScan()" style="display:none">
+                Stop Scan
+            </button>
+            <button type="button" class="btn btn-export" id="export-btn"
+                    onclick="exportCsv()" style="display:none">
+                Export CSV
+            </button>
+        </div>
+    </form>
+</div>
+
+<div id="results-area">
+    <!-- Results injected here by SSE -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let eventSource = null;
+
+function startScan(e) {
+    e.preventDefault();
+    const form = document.getElementById('scan-form');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData).toString();
+
+    // Reset results area
+    document.getElementById('results-area').innerHTML = `
+        <div id="progress-area"></div>
+        <div id="step-area"></div>
+        <table class="results-table" id="results-table" style="display:none">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Connection</th>
+                    <th>Database</th>
+                    <th>Table</th>
+                    <th>Data Size</th>
+                    <th>Index Size</th>
+                    <th>Total Size</th>
+                </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+        </table>
+        <div id="all-clear-area"></div>
+        <div id="errors-panel" style="display:none">
+            <div class="card error-panel">
+                <h3 class="error-panel-header">Errors</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Connection</th>
+                            <th>Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="errors-body"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // Toggle buttons
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('cancel-btn').style.display = '';
+    document.getElementById('export-btn').style.display = 'none';
+
+    // Connect SSE
+    eventSource = new EventSource('/api/scan?' + params);
+
+    eventSource.addEventListener('step', function(e) {
+        const data = JSON.parse(e.data);
+        const area = document.getElementById('step-area');
+        area.innerHTML = '<div class="step-status"><span class="spinner"></span> ' + escapeHtml(data.message) + '</div>';
+    });
+
+    eventSource.addEventListener('instance_start', function(e) {
+        const data = JSON.parse(e.data);
+        document.getElementById('progress-area').innerHTML = data.progress_html;
+    });
+
+    eventSource.addEventListener('instance_result', function(e) {
+        const data = JSON.parse(e.data);
+
+        // Update progress
+        document.getElementById('progress-area').innerHTML = data.progress_html;
+
+        // Insert flagged rows (red/yellow only) in sorted order by total_size desc
+        if (data.rows_html) {
+            const tbody = document.getElementById('results-body');
+            const table = document.getElementById('results-table');
+
+            const temp = document.createElement('template');
+            temp.innerHTML = data.rows_html;
+            const newRows = temp.content.querySelectorAll('tr');
+
+            newRows.forEach(function(newRow) {
+                const newSize = parseInt(newRow.getAttribute('data-total-size') || '0', 10);
+                let inserted = false;
+
+                const existingRows = tbody.querySelectorAll('tr');
+                for (let i = 0; i < existingRows.length; i++) {
+                    const existingSize = parseInt(existingRows[i].getAttribute('data-total-size') || '0', 10);
+                    if (newSize > existingSize) {
+                        tbody.insertBefore(newRow, existingRows[i]);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    tbody.appendChild(newRow);
+                }
+
+                table.style.display = '';
+            });
+        }
+    });
+
+    eventSource.addEventListener('instance_error', function(e) {
+        const data = JSON.parse(e.data);
+        document.getElementById('progress-area').innerHTML = data.progress_html;
+
+        // Append to errors panel immediately
+        const panel = document.getElementById('errors-panel');
+        const tbody = document.getElementById('errors-body');
+        panel.style.display = '';
+        tbody.insertAdjacentHTML('beforeend',
+            '<tr>' +
+            '<td class="connection-name">' + escapeHtml(data.connection_name) + '</td>' +
+            '<td class="error-msg" title="' + escapeAttr(data.error_message) + '">' + escapeHtml(data.error_message) + '</td>' +
+            '</tr>'
+        );
+    });
+
+    eventSource.addEventListener('done', function(e) {
+        const data = JSON.parse(e.data);
+
+        document.getElementById('progress-area').innerHTML = data.progress_html;
+        document.getElementById('step-area').innerHTML = '';
+
+        if (data.all_clear_html) {
+            document.getElementById('all-clear-area').innerHTML = data.all_clear_html;
+        }
+
+        // Insert top-up green rows (largest greens to reach minimum display count)
+        if (data.topup_rows_html) {
+            const tbody = document.getElementById('results-body');
+            const table = document.getElementById('results-table');
+
+            const temp = document.createElement('template');
+            temp.innerHTML = data.topup_rows_html;
+            const newRows = temp.content.querySelectorAll('tr');
+
+            newRows.forEach(function(newRow) {
+                const newSize = parseInt(newRow.getAttribute('data-total-size') || '0', 10);
+                let inserted = false;
+
+                const existingRows = tbody.querySelectorAll('tr');
+                for (let i = 0; i < existingRows.length; i++) {
+                    const existingSize = parseInt(existingRows[i].getAttribute('data-total-size') || '0', 10);
+                    if (newSize > existingSize) {
+                        tbody.insertBefore(newRow, existingRows[i]);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    tbody.appendChild(newRow);
+                }
+
+                table.style.display = '';
+            });
+        }
+
+        if (data.has_flagged) {
+            document.getElementById('export-btn').style.display = '';
+        }
+
+        cleanup();
+    });
+
+    eventSource.addEventListener('error', function(e) {
+        if (eventSource.readyState === EventSource.CLOSED) return;
+
+        if (e.data) {
+            const panel = document.getElementById('errors-panel');
+            const tbody = document.getElementById('errors-body');
+            panel.style.display = '';
+            tbody.insertAdjacentHTML('beforeend',
+                '<tr><td class="connection-name">System</td>' +
+                '<td class="error-msg">' + escapeHtml(e.data) + '</td></tr>'
+            );
+        }
+        document.getElementById('step-area').innerHTML = '';
+        cleanup();
+    });
+
+    eventSource.onerror = function() {
+        cleanup();
+    };
+}
+
+function cancelScan() {
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+
+    // Show cancelling feedback
+    const cancelBtn = document.getElementById('cancel-btn');
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = 'Stopping...';
+
+    const stepArea = document.getElementById('step-area');
+    if (stepArea) {
+        stepArea.innerHTML = '<div class="step-status step-cancelling">Stopping scan — waiting for current instance to finish...</div>';
+    }
+
+    setTimeout(function() {
+        if (stepArea) {
+            stepArea.innerHTML = '<div class="step-status step-cancelled">Scan stopped.</div>';
+        }
+        cleanup();
+    }, 1500);
+}
+
+function cleanup() {
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+    document.getElementById('submit-btn').disabled = false;
+    const cancelBtn = document.getElementById('cancel-btn');
+    cancelBtn.style.display = 'none';
+    cancelBtn.disabled = false;
+    cancelBtn.textContent = 'Stop Scan';
+}
+
+function exportCsv() {
+    window.location.href = '/api/export-csv';
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function escapeAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+{% endblock %}

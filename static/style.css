@@ -1,0 +1,488 @@
+/* ─── Variables ─── */
+:root {
+    --color-red: #dc2626;
+    --color-red-bg: #fef2f2;
+    --color-red-border: #fecaca;
+    --color-yellow: #d97706;
+    --color-yellow-bg: #fffbeb;
+    --color-yellow-border: #fde68a;
+    --color-green: #16a34a;
+    --color-green-bg: #f0fdf4;
+    --color-green-border: #bbf7d0;
+    --color-error: #6b7280;
+    --color-error-bg: #f9fafb;
+    --color-error-border: #e5e7eb;
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-text: #1e293b;
+    --color-text-muted: #64748b;
+    --color-border: #e2e8f0;
+    --radius: 8px;
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+/* ─── Layout (single column, no sidebar) ─── */
+.layout {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    min-height: 100vh;
+}
+
+/* ─── Page Header ─── */
+.page-header {
+    margin-bottom: 24px;
+}
+
+.page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.page-header p {
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+/* ─── Form Card ─── */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.form-card {
+    margin-bottom: 24px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.form-group select {
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.form-group select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.cluster-row {
+    display: flex;
+    gap: 8px;
+}
+
+.cluster-row select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    outline: none;
+}
+
+.cluster-row select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+/* ─── Buttons ─── */
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+}
+
+.btn-secondary {
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--color-border);
+}
+
+.btn-export {
+    background: var(--color-green);
+    color: white;
+}
+
+.btn-export:hover:not(:disabled) {
+    background: #15803d;
+}
+
+/* ─── Login Status ─── */
+.login-status {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-pending {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.login-success {
+    background: var(--color-green-bg);
+    color: var(--color-green);
+    border: 1px solid var(--color-green-border);
+}
+
+.login-error {
+    background: var(--color-red-bg);
+    color: var(--color-red);
+    border: 1px solid var(--color-red-border);
+}
+
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #bfdbfe;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ─── Progress Bar ─── */
+.progress-wrapper {
+    margin-bottom: 16px;
+}
+
+.progress-bar-track {
+    height: 6px;
+    background: var(--color-border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    animation: progress-pulse 1.5s ease-in-out infinite;
+}
+
+.progress-bar-fill.done {
+    background: var(--color-green);
+    animation: none;
+}
+
+@keyframes progress-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.progress-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    align-items: center;
+}
+
+.progress-count {
+    font-weight: 600;
+}
+
+.stat {
+    font-weight: 500;
+}
+
+.stat-red { color: var(--color-red); }
+.stat-yellow { color: var(--color-yellow); }
+.stat-green { color: var(--color-green); }
+.stat-error { color: var(--color-error); }
+
+/* ─── Results Table ─── */
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.results-table thead th {
+    background: var(--color-bg);
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.results-table td {
+    padding: 8px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.results-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ─── Result Row Colors ─── */
+.red-row {
+    background: var(--color-red-bg);
+}
+
+.yellow-row {
+    background: var(--color-yellow-bg);
+}
+
+.green-row {
+    background: var(--color-surface);
+}
+
+/* ─── Badges ─── */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.badge-red {
+    background: var(--color-red);
+    color: white;
+}
+
+.badge-yellow {
+    background: var(--color-yellow);
+    color: white;
+}
+
+.badge-green {
+    background: var(--color-green);
+    color: white;
+}
+
+/* ─── Data Display ─── */
+.connection-name {
+    font-weight: 500;
+    font-family: monospace;
+}
+
+.size-value {
+    font-family: monospace;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.pct-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-left: 4px;
+}
+
+/* ─── All Clear Banner ─── */
+.all-clear-banner {
+    padding: 24px;
+    background: var(--color-green-bg);
+    border: 1px solid var(--color-green-border);
+    border-radius: var(--radius);
+    color: var(--color-green);
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.all-clear-banner p {
+    font-size: 13px;
+    font-weight: 400;
+    margin-top: 4px;
+    color: var(--color-text-muted);
+}
+
+/* ─── Error Section ─── */
+.error-section {
+    margin-top: 16px;
+}
+
+.error-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.error-msg {
+    font-size: 12px;
+    color: var(--color-error);
+    font-family: monospace;
+    max-width: 500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─── Error Banner ─── */
+.error-banner {
+    padding: 12px 16px;
+    background: var(--color-red-bg);
+    border: 1px solid var(--color-red-border);
+    border-radius: var(--radius);
+    color: var(--color-red);
+    font-weight: 500;
+}
+
+.error {
+    padding: 8px 12px;
+    background: var(--color-red-bg);
+    border: 1px solid var(--color-red-border);
+    border-radius: 6px;
+    color: var(--color-red);
+    font-size: 13px;
+}
+
+/* ─── Step Status (live scan activity) ─── */
+.step-status {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-family: monospace;
+    color: var(--color-text-muted);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-cancelling {
+    color: var(--color-yellow);
+    border-color: var(--color-yellow-border);
+    background: var(--color-yellow-bg);
+}
+
+.step-cancelled {
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+/* ─── Errors Panel (live, bottom of results) ─── */
+.error-panel {
+    margin-top: 16px;
+}
+
+.error-panel-header {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-red);
+    margin-bottom: 8px;
+}
+
+.error-panel .results-table {
+    margin-bottom: 0;
+}
+
+.error-panel .error-msg {
+    max-width: none;
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* ─── Cancel / Stop Button ─── */
+.btn-cancel {
+    background: var(--color-red);
+    color: white;
+}
+
+.btn-cancel:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.btn-cancel:disabled {
+    background: var(--color-red);
+    opacity: 0.6;
+}

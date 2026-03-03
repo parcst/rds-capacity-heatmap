@@ -1,0 +1,14 @@
+<tr class="result-row {{ result.status.value }}-row" data-total-size="{{ result.total_size }}">
+    <td>
+        <span class="badge badge-{{ result.status.value }}">{{ result.status.value | upper }}</span>
+    </td>
+    <td class="connection-name">{{ result.connection_name }}</td>
+    <td>{{ result.database }}</td>
+    <td>{{ result.table }}{% if result.partition_name %} <span class="pct-label">— {{ result.partition_name }}</span>{% endif %}</td>
+    <td class="size-value">{{ result.data_size | format_bytes }}</td>
+    <td class="size-value">{{ result.index_size | format_bytes }}</td>
+    <td class="size-value">
+        {{ result.total_size | format_bytes }}
+        <span class="pct-label">({{ "%.1f" | format(result.total_size / rds_limit * 100) }}%)</span>
+    </td>
+</tr>

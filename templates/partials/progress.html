@@ -1,0 +1,25 @@
+<div class="progress-wrapper">
+    <div class="progress-bar-track">
+        <div class="progress-bar-fill {% if done %}done{% endif %}"
+             style="width: {{ (current / total * 100) if total > 0 else 0 }}%">
+        </div>
+    </div>
+    <div class="progress-stats">
+        <span class="progress-count">
+            {% if done %}
+                Complete &mdash; {{ total }} instance{{ "s" if total != 1 else "" }} scanned
+            {% else %}
+                {{ current }} / {{ total }} instances
+            {% endif %}
+        </span>
+        {% if red_count > 0 %}
+        <span class="stat stat-red">{{ red_count }} red</span>
+        {% endif %}
+        {% if yellow_count > 0 %}
+        <span class="stat stat-yellow">{{ yellow_count }} yellow</span>
+        {% endif %}
+        {% if error_count > 0 %}
+        <span class="stat stat-error">{{ error_count }} errors</span>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,17 @@
+{% if status == "pending" %}
+<div class="login-status login-pending"
+     hx-get="/api/login-status?cluster={{ cluster }}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML">
+    <span class="spinner"></span>
+    Waiting for SSO login to <strong>{{ cluster }}</strong>...
+</div>
+{% elif status == "success" %}
+<div class="login-status login-success">
+    Logged in as <strong>{{ username }}</strong>
+</div>
+{% else %}
+<div class="login-status login-error">
+    Login failed: {{ error }}
+</div>
+{% endif %}
