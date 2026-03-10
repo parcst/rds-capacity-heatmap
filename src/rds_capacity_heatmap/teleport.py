@@ -63,30 +63,64 @@ def find_tsh(override: str = "") -> str:
 
 def get_clusters() -> list[str]:
     """Return cluster names from ``~/.tsh/*.yaml`` profile files."""
-    profiles = sorted(_TSH_DIR.glob("*.yaml"))
-    clusters = [p.stem for p in profiles]
-    return clusters
+    try:
+        profiles = sorted(_TSH_DIR.glob("*.yaml"))
+        return [p.stem for p in profiles]
+    except Exception:
+        return []
 
 
-def get_logged_in_user(tsh: str) -> str:
-    """Return the username from ``tsh status --format=json``."""
-    result = subprocess.run(
-        [tsh, "status", "--format=json"],
-        capture_output=True,
-        text=True,
-    )
-    if not result.stdout.strip():
-        raise RuntimeError("tsh status returned no output. Are you logged in?")
-    status = json.loads(result.stdout)
+def get_login_status(
+    tsh: str, cluster: str | None = None
+) -> tuple[bool, str]:
+    """Cluster-aware login check. Returns (is_logged_in, username).
 
-    username: str = ""
-    if isinstance(status, dict):
-        username = (
-            status.get("active", {}).get("username", "")
-            or status.get("username", "")
+    Checks both active profile and inactive profiles for the target cluster.
+    Never raises — returns (False, "") on any failure.
+    """
+    try:
+        result = subprocess.run(
+            [tsh, "status", "--format=json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
+        # tsh status returns exit code 1 even when logged in — use stdout anyway
+        if not result.stdout.strip():
+            return False, ""
 
-    if not username:
+        status = json.loads(result.stdout)
+        if not isinstance(status, dict):
+            return False, ""
+
+        # Check active profile first
+        active = status.get("active", {})
+        if not cluster or active.get("cluster") == cluster:
+            username = active.get("username", "")
+            if username:
+                return True, username
+
+        # Check inactive profiles for specific cluster
+        profiles: list[dict] = status.get("profiles", [])
+        for profile in profiles:
+            if profile.get("cluster") == cluster and profile.get("username"):
+                return True, profile["username"]
+
+        # If no cluster specified, return whatever active gives us
+        if not cluster:
+            username = active.get("username", "")
+            if username:
+                return True, username
+
+        return False, ""
+    except Exception:
+        return False, ""
+
+
+def get_logged_in_user(tsh: str, cluster: str | None = None) -> str:
+    """Return the username for *cluster*. Raises on failure."""
+    logged_in, username = get_login_status(tsh, cluster)
+    if not logged_in or not username:
         raise RuntimeError(
             "Could not determine Teleport username from 'tsh status'. "
             "Are you logged in?"
@@ -94,13 +128,12 @@ def get_logged_in_user(tsh: str) -> str:
     return username
 
 
-def check_login_status(tsh: str) -> tuple[bool, str]:
+def check_login_status(tsh: str, cluster: str | None = None) -> tuple[bool, str]:
     """Check if the user is logged in. Returns (is_logged_in, username_or_error)."""
-    try:
-        username = get_logged_in_user(tsh)
+    logged_in, username = get_login_status(tsh, cluster)
+    if logged_in:
         return True, username
-    except Exception as e:
-        return False, str(e)
+    return False, "Not logged in"
 
 
 def login_to_cluster(tsh: str, cluster: str) -> subprocess.Popen:  # type: ignore[type-arg]
@@ -130,6 +163,7 @@ def list_mysql_databases(tsh: str, cluster: str) -> list[dict[str, str]]:
         capture_output=True,
         text=True,
         check=True,
+        timeout=30,
     )
     raw = json.loads(result.stdout)
     if not isinstance(raw, list):
@@ -178,6 +212,7 @@ def start_tunnel(
         [tsh, "db", "login", db_name, f"--db-user={db_user}"] + cluster_args,
         check=True,
         capture_output=True,
+        timeout=30,
     )
 
     # Step 2: start tunnel

@@ -25,7 +25,7 @@ from .models import (
     TableSizeResult,
 )
 from .scanner import cleanup_all, list_instances, scan_instance
-from .teleport import check_login_status, find_tsh, get_clusters, login_to_cluster
+from .teleport import find_tsh, get_clusters, get_login_status, login_to_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -68,49 +68,14 @@ _logged_in_username: str = ""
 _last_scan_state: ScanState | None = None
 
 
-def _check_cluster_login(cluster: str) -> tuple[bool, str]:
-    """Check if the user is logged into *cluster*. Returns (ok, username).
-
-    Parses ``tsh status --format=json`` and verifies the active cluster matches.
-    """
-    import json as _json
-    import subprocess
-
-    tsh = find_tsh()
-    result = subprocess.run(
-        [tsh, "status", "--format=json"],
-        capture_output=True,
-        text=True,
-    )
-    if not result.stdout.strip():
-        return False, ""
-
-    status = _json.loads(result.stdout)
-
-    # Check active profile first
-    active = status.get("active", {})
-    if active.get("cluster", "") == cluster and active.get("username", ""):
-        return True, active["username"]
-
-    # Check inactive profiles (logged in but not the current active session)
-    for profile in status.get("profiles", []):
-        if profile.get("cluster", "") == cluster and profile.get("username", ""):
-            return True, profile["username"]
-
-    return False, ""
-
-
 def _resolve_username(cluster: str = "") -> str:
     """Return the logged-in Teleport username for *cluster*."""
     global _logged_in_username, _logged_in_cluster
     if _logged_in_username and _logged_in_cluster == cluster:
         return _logged_in_username
     try:
-        if cluster:
-            ok, username = _check_cluster_login(cluster)
-        else:
-            tsh = find_tsh()
-            ok, username = check_login_status(tsh)
+        tsh = find_tsh()
+        ok, username = get_login_status(tsh, cluster or None)
         if ok:
             _logged_in_username = username
             _logged_in_cluster = cluster
@@ -158,7 +123,8 @@ async def api_login_status(request: Request):
     global _logged_in_username, _logged_in_cluster
     cluster = request.query_params.get("cluster", "")
     try:
-        logged_in, username = _check_cluster_login(cluster)
+        tsh = find_tsh()
+        logged_in, username = get_login_status(tsh, cluster or None)
         if logged_in:
             _logged_in_username = username
             _logged_in_cluster = cluster
