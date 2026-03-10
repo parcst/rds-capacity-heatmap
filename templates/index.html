@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="page-header">
-    <h1>RDS Capacity Heatmap</h1>
-    <p>Scan every MySQL instance in a Teleport cluster for tables approaching the 16 TB RDS storage limit.</p>
-</div>
-
 <div class="card form-card">
     <form id="scan-form" onsubmit="startScan(event)">
         <div class="form-row">
